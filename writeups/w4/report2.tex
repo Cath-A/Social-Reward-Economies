@@ -1,0 +1,266 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs,array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black]{hyperref}
+
+% Drafting helpers: delete calls as you fill in
+\newcommand{\todo}[1]{\par\smallskip\noindent\textcolor{red!70!black}{\textbf{[FILL:}~#1\textbf{]}}\par\smallskip}
+\newcommand{\decide}[1]{\par\smallskip\noindent\textcolor{orange!80!black}{\textbf{[DECIDE:}~#1\textbf{]}}\par\smallskip}
+
+% Notation
+\newcommand{\Gd}{G_{d}}          % those in power
+\newcommand{\Gn}{G_{n}}          % general public
+\newcommand{\Gr}{G_{r}}          % resistant subgroup (the movement)
+\newcommand{\sd}{\sigma_{s}}     % dominant (silence) schema
+\newcommand{\sr}{\sigma_{r}}     % resistant (disclosure) schema
+\newcommand{\E}{\mathbb{E}}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}[section]
+\theoremstyle{plain}
+\newtheorem{lemma}{Lemma}[section]
+\newtheorem{proposition}{Proposition}[section]
+
+\title{Formalizing Resistance in Social Reward Economy}
+\author{Aaron Avram}
+\date{October 12, 2026}
+
+\begin{document}
+\maketitle
+
+
+\section{Introduction}
+In this report, I give a formal definition of resistance within a social reward economy. \textit{Learning Norms} gives a formal definition of a single reward economy and
+describes a model that converges reliably to the welfare optimal norm. The paper \textit{Social Reward Economies} gives a description of how these ideas
+can be extended to cases where more than one norm are in competition and multiple social reward
+economies exist in the same system. This report aims to formalize a resistant subgroup as defined in \textit{Social Reward Economies}
+with a similar structure to the model in \textit{Learnin Norms} under certain simplifying assumptions.
+
+% ============================================================
+\section{Set up}
+% ============================================================
+The basic setup for the system is as follows:
+\begin{itemize}
+    \item There is a group of agents $G$.
+    \item A set of states $S$ where $s \in S$ has probability $p(s)$ of occuring.
+    \item For each $s \in S$ there is a set $A(s)$ of possible actions in state $s$.
+    \item A policy is function that maps each $s \in S$ to a probability distribution over $A(s)$.
+    Fix a dominant policy $\pi_d$.
+    \item Each agent $i \in G$ has a fixed reward $u_i(s, a)$ for action $a \in A(s)$ for $s \in S$.
+    \item Each agent $i$ has an expected reward under a policy $\pi$ in state $s$:
+    \[ U_i(s, \pi) = \mathbb E_{a \sim \pi(s)}\Big[u_i(s, a)\Big] \]
+    \item For each $i \in G$ there is a set of states $N_i \subseteq S$ defined as
+    \[ N_i = \{ s \in S : U_i(s, \pi_d) < -\tau \} \]
+    for a fixed constant $\tau > 0$.
+\end{itemize}
+We will assume the dominant norm stays fixed throughout all of the calculations for simplicity.
+
+The system operates on a discrete time scale where for each $t \in \mathbb N$
+it enters a state $s(t)$ sampled with $s \sim p(s)$.
+
+\section{Defining Resistance Theoretically}
+\begin{definition}
+    The grievance of an agent $i$ in a state $s$ is defined as
+    \[ w_i(s) = \max(0, -U_i(s)) \]
+    this measures how dissatisfied an agent $i$ is with the dominant norm in state $S$.
+\end{definition}
+\begin{remark}
+        $N_i$ can then be considered the disagreement set of $i$
+\end{remark}
+\begin{definition}
+    A subgroup is a pair $(H, T)$ which is a set of agents $H \subseteq G$
+and a set of states $T \subseteq S$. This pair is admissible if $T \subseteq \bigcap_{i \in H}N_i$.
+\end{definition}
+\begin{definition}
+    To measure the strength of a resistant subgroup define
+    \[ \Phi(H, T) = \sum_{ i \in H}\sum_{ s \in T}p(s)w_i(s) \]
+    and finding a maximally resistant subgroup requires maximizing $\Phi(H, T)$ for admissible pairs.
+\end{definition}
+
+We can build a bipartite graph with agents on one side and states on the other
+with the edge weight between $i \in G$ and $s \in S$ as $W[i, s] = p(s)w_i(s)$. An admissible pair is a biclique, which is a bipartite subgraph in which every agent of $H$
+is joined to every state in $T$. $\Phi$ is just the sum of the edge weights. Finding the maximum weight biclique in a bipartite is known to be NP-complete.
+
+We can relax the problem constraints as the hardness of the problem comes from
+the requirement that $T \subseteq N_i$. We can instead charge each $i \in H$ for the states in $T$
+where they benefit by defining
+\[ V[i, s] = p(s)\max(0, U_i(s, \pi_d)) \]
+and
+\[ M_\lambda = W - \lambda V \]
+with
+\[ \Phi_\lambda(H, T) = \sum_{i \in H}\sum_{s \in T}M_\lambda[i, s] \]
+where taking $\lambda \to \infty$ recovers the original $\Phi$.
+In this simplified setup, given fixed $T$ or fixed $H$ the optimal
+pair is easy to find.
+
+For fixed $T$ the best $H$ is $\{ i: r_i > 0 \}$ where
+\[ r_i = \sum_{s \in T}M_\lambda[i, s] \]
+and for fixed $H$ the best $T$ is $\{ s : c_s > 0 \}$
+where
+\[ c_s = \sum_{i \in H}M_\lambda[i, s] \]
+
+\section{Subgroup Formation Mechanics}
+Agents do not have direct access to their rewards but instead keep
+a running estimate $v_i(s)$ which is initialized at $0$.
+We denote the number of times state $s$ has been visited by $n_i(s)$.
+At time $t$. $v_i(s)$ is updated as
+\[ v_i(s) \to \frac{1}{n_i(s) + 1}\Big(u_i(s, a) + n_i(s)v_i(s)\Big) \]
+if $s(t) = s$ and otherwise is held constant.
+
+
+
+Agents calculate all of the above quantities
+with $v_i(s)$ in place of $U_i(s)$. When this is the case, we will write $\hat{w}_i(s)$ instead of $w_i(s)$ and etc.
+We define
+\[ \hat{N}_i = \{ s \in S : n_i(s) \geq n_0, \hat{v}_i(s) < -\tau - \eta \} \]
+for a fixed error constant $\eta > 0$ and count $n_0$.
+
+We use a union bound threshold to implement subgroup formation.
+The formation process does not happen at every time step $t$ but on a timeline of formation epochs $T(n)$.
+This is controlled by two parameters: $K$ the number of formation epochs and $\Delta$
+the spacing between each formation epoch.
+
+Additionally, to prevent premature formation the first formation epoch only occurs
+after $n_i(s) > n_0$ for all $i$ and $s$ with $p(s) > p_{\text{min}}$
+where $p_{\text{min}}$ is a minimum probability for a state to be considered significant.
+
+In other words, formation is only started once all agents have enough context to have accurate estimates.
+
+To determine which agents interact in the formation process we define a
+similarity metric on the set of agents using Jaccard similarity
+\[ \operatorname{sim}(i, j) = \frac{\sum_{s \in S}p(s)\min\{ \hat{w}_i(s), \hat{w}_j(s) \}}{\sum_{s \in S}p(s)\max \{ \hat{w}_i(s), \hat{w}_j(s) \}} \]
+then we can build a $L$ nearest neighbours graph on $G$ with the similarity metric measuring closeness.
+
+This graph is recomputed at every formation epoch.
+
+
+For an agent $k$ define
+\[ L_k(i) = \sum_{s \in N_k \setminus N_i}p(s) \]
+and note the relation
+\[ p(\bigcap_{i \in H}N_i) \leq p(N_k) - \sum_{i \in H}L_k(i) \]
+with the esimated quantity
+\[ \hat{L}_k(i) = \sum_{s \in \hat{N}_k \setminus \hat{N}_i}p(s) \]
+
+The algorithm for subgroup formation is as follows:
+\begin{enumerate}
+    \item[(1)] Each candidate agent $k$ collects $N(k)$ the set of its $L$-nearest neighbours
+            in the Jaccard graph.
+    
+    \item[(2)] Every member of $N(k)$ forwards their $L$ nearest neighbours to $k$
+    so that its pool of candidates is $N(k) \cup N(N(k))$.
+
+    \item[(3)] $k$ sorts its pool of candidates by $\hat{L}_k(i)$ and admits a candidate $i$ to its group
+    $H_k$ if
+    \[ \hat{L}_k(i) + \sum_{j \in H_k}\hat{L}_k(j) \leq \epsilon \cdot p(N_k) \]
+    for some tolerance $\epsilon > 0$. Its final proposed pair is $(H_k, N_k)$ where $H_k$ is the group it formed during this iterative process.
+    Then let $\sigma_k = \Phi_\lambda(H_k, \bigcap_{i \in H_k}\hat{N}_i)$.
+
+    \item[(4)] Each agent identitifies with the highest scoring proposal including it.
+    \item[(5)] A candidate $k$ commits to $H_k$ if every member of $H_k$
+    identitifies with its proposal.
+    \item[(6)] Agents that commit to a group are no longer considered in the iteration.
+\end{enumerate}
+this process occurs at every epoch
+
+\section{Theoretical Analysis}
+I present a theoretical analysis of the abov model to find convergence guarantees under some reasonable assumptions.
+Most of this section is more mathematically involved, but it only serve to rigorously justify the above definitions.
+Skip to the discussion at the bottom of this discussion for the relevant conclusions about how the model operates.
+
+First I recap some modelling assumptions stated above: (i) $\pi_d$ is fixed, (ii) $p(s)$ is known to all agents,
+(iii) Messages are exact and honest, (iv) rewards $u_i(s, a)$ are bounded by some $B > 0$, (v) At every step
+the new state is drawn independently from the previous ones, at a visit to s it draws $a \sim \pi_d(s)$
+independently and observes $u_i(s, a)$ therefore $\hat{v}_i(s)$ is the mean of $n_i(s)$
+i.i.d. draws with mean $U_i(s, \pi_d)$.
+
+A convention is that a leader $k$ is in its own group. Step 3 sorts
+the pool of candidates by $\hat{L}_k$ and stops at the first candidate that violates the budget,
+so the admitted set $H_k$ satisfies
+\begin{align} \sum_{i \in H_k}\hat{L}_k(i) \leq \epsilon p(\hat{N}_k) \end{align}
+then $k$'s proposal is $(H_k, \hat{T}_k)$ where $\hat{T}_k = \bigcap_{i \in H_k}\hat{N}_i$
+and $\sigma_k = \Phi_\lambda(H_k, \hat{T}_k)$. Ties between proposals are broken by agent id.
+Leaders are agents with $\hat{N}_k \neq \varnothing$. 
+
+Note that for now we assume that each agent acts at every time step, which simplifies
+the calculations below. However, removing this assumption will not affect the theoretical analysis much
+qualititatively as only lemma 2 needs to be updated
+with a larger bound on the minimum count $n_0$.
+
+\begin{lemma}
+    (Estimation). Let $\theta = \frac{\eta^2}{2B^2}$ and
+    \[ n_0 = \lceil \theta^{-1} \log \frac{2|G||S|}{\delta(1 - e^{-\theta})} \rceil \]
+    then the event
+    \[ E : |\hat{v}_i(s) - U_i(s, \pi_d)| \leq \eta \text{ for all i, s with $n_i(s) \geq n_0$, at all times} \]
+    holds with probability at least $1 - \delta$.
+\end{lemma}
+\begin{proof}
+    For fixed $(i, s)$ and $n$ Hoeffding's inequality on the range $[-B, B]$ gives the bound
+    \[ \mathbb P(|\bar{u}_{i,n} - U_i(s)| \leq \eta) \leq 2e^{-n\theta} \]
+    where $\bar{u}_{i, n}$ is the mean of the first draws $u_i(s, \pi_d)$ in the state $s$ which $i$ observes.
+    now we have
+    
+    \begin{align*}
+    \mathbb P(|\bar{u}_{i, n} -U_i(s)| \leq \eta : n \geq n_0) &\leq \sum_{n = n_0}^\infty\mathbb P(|\bar{u}_{i, n} -U_i(s)| \geq \eta) \\
+    &\leq \sum_{n = n_0}^\infty 2e^{-n\theta} \\
+    &= 2e^{-n_0\theta}\sum_{n = 0}^\infty [e^{-\theta}]^n \\
+    &= \frac{2e^{-n_0\theta}}{1 - e^{-\theta}} \\
+    \end{align*}
+    and if we plug in the value of $n_0$ stated above this reduces to
+    \[ \mathbb P(|\bar{u}_{i, n} -U_i(s)| \leq \eta : n \geq n_0) \leq \frac{\delta}{|G||S|} \]
+    then we can find $\mathbb P(E)$ as
+    \begin{align*}
+        \mathbb P(E) &= 1 - \mathbb P(E^c) \\
+        &\geq 1 - \sum_{i, s}\mathbb P(|\bar{u}_{i, n} -U_i(s)| \leq \eta : n \geq n_0) \\
+        &\geq 1 - \sum_{i, s}\frac{\delta}{|G||S|} \\
+        &= 1 - \delta
+    \end{align*}
+    as required.
+\end{proof}
+
+\begin{lemma}
+    (Visit Counts). For a set of states $T$ with $p_\text{min}(T) = \min_{s \in T}p(s)$
+    \[ t \geq \max \{ 2n_0, 8 \log (|G||S|/\delta) \} / p_{\text{min}}(T) \]
+    then with probability at least $1 - \delta$ every agent has $n_i(s) \geq n_0$.
+    for all $s \in T$ at time $t$.
+\end{lemma}
+\begin{proof}
+    $n_i(s)$ is binomial with mean $tp(s)$. The Chernoff bound then implies
+    \[ \mathbb P(n_i(s) \leq tp(s)/2) \leq e^{-tp(s)/8} \]
+    now we apply a union bound
+    \begin{align*}
+        \mathbb P(\bigcup_{i, s}\{n_i(s) \leq n_0\}) &\leq \sum_{i, s}\mathbb P(n_i(s) \leq n_0) \\
+        &\text{now since $p(s) \geq p_{\text{min}}$:} \\
+        &\leq \sum_{i, s}\mathbb P(n_i(s) \leq tp(s)/2) \\
+        &\leq \sum_{i, s}e^{-tp(s)/8} \\
+        &\text{plugging in $tp(s)/8 \geq \log\frac{|G||S|}{\delta}$:} \\
+        &\leq \sum_{i, s}\frac{\delta}{|G||S|} \\
+        &= \delta
+    \end{align*}
+    then
+    \[ \mathbb P(\bigcup_{i, s}\{n_i(s) > n_0\}) \geq 1 - \delta \]
+    as required.
+\end{proof}
+\begin{proposition}
+    (Soundness) On $E$ the following hold:
+    \begin{enumerate}
+        \item[(a)] $\hat{N_i} \subseteq N_i$ for every $i$ \\
+        \item[(b)] For any leader $k$ and any set $H \ni k$
+        \[ p(\bigcap_{i \in H}N_i) \geq p(\bigcap_{i \in H}\hat{N}_i) \geq p(\hat{N}_k) - \sum_{i \in H}\hat{L}_k(i) \]
+        \item[(c)] If $H = H_k$ satisfies (1) then $(H_K, \hat{T_k})$ is admissible, $p(\hat{T_k}) \geq (1 - \epsilon)p(\hat{N}_k)$ and
+        \[ \Phi_\lambda(H, \hat{T}_k) \geq \tau|H|(1 - \epsilon)p(\hat{N}_k) \]
+    \end{enumerate}
+\end{proposition}
+\begin{proof}
+    To prove $(a)$ note that if $s \in \hat{N}_i$ then $n_i(s) \geq n_0$, and so on $E$
+    \[ U_i(s) \leq \hat{v_i}(s) + \eta < -\tau \]
+    to prove (b), since $k \in H$ we have
+    \[ \bigcap_{i \in H}\hat{N}_i = \hat{N}_k \setminus \bigcup_{i \in H}(\hat{N}_k \setminus \hat{N}_i) \]
+\end{proof}
+
+\end{document}
